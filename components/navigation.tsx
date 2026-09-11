@@ -19,8 +19,9 @@ export default function NavigationBar() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const isAuthRoute = pathname.toLowerCase().startsWith("/login")
+  const hideForPublicHome = pathname === "/" && status !== "authenticated"
 
-  if (pathname === "/chat" || isAuthRoute) return null
+  if (pathname === "/chat" || isAuthRoute || hideForPublicHome) return null
 
   const closeMenu = () => setMobileOpen(false)
 
