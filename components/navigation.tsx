@@ -18,7 +18,9 @@ export default function NavigationBar() {
   const { data: session, status } = useSession()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  if (pathname === "/chat" || pathname === "/login") return null
+  const isAuthRoute = pathname.toLowerCase().startsWith("/login")
+
+  if (pathname === "/chat" || isAuthRoute) return null
 
   const closeMenu = () => setMobileOpen(false)
 
