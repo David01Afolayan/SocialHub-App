@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import "./globals.css"
 import Providers from "./providers"
+import NavigationBar from "@/components/navigation"
 
 export const metadata: Metadata = {
   title: "SocialHub",
@@ -16,6 +17,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Providers>
+          <NavigationBar />
           {children}
         </Providers>
       </body>

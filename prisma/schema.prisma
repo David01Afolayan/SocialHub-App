@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Account {
@@ -37,13 +38,62 @@ model Session {
 model User {
   id String @id @default(cuid())
   name String?
+  username String? @unique
+  bio String?
   email String? @unique
   emailVerified DateTime?
+  password String?
+  role String @default("USER")
   image String?
   accounts Account[]
   sessions Session[]
   posts Post[]
   comments Comment[]
+  followers Follow[] @relation("follower")
+  following Follow[] @relation("following")
+  notificationsReceived Notification[] @relation("recipientNotifications")
+  notificationsSent Notification[] @relation("actorNotifications")
+  chatMessages ChatMessage[]
+}
+
+model ChatMessage {
+  id String @id @default(cuid())
+  content String @db.Text
+  mode String
+  createdAt DateTime @default(now())
+
+  authorId String
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([mode, createdAt])
+}
+
+model Follow {
+  id String @id @default(cuid())
+  followerId String
+  followingId String
+  createdAt DateTime @default(now())
+
+  follower User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+}
+
+model Notification {
+  id String @id @default(cuid())
+  type String
+  message String
+  createdAt DateTime @default(now())
+  readAt DateTime?
+
+  recipientId String
+  actorId String?
+  postId String?
+
+  recipient User @relation("recipientNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor User? @relation("actorNotifications", fields: [actorId], references: [id], onDelete: SetNull)
+  post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -57,18 +107,26 @@ model VerificationToken {
 model Post {
   id String @id @default(cuid())
   content String
-  authorId String
-  author User @relation(fields: [authorId], references: [id])
-  comments Comment[] // ADD THIS LINE
+  mediaUrls String[] @default([])
   createdAt DateTime @default(now())
+  scheduledAt DateTime?
+  status String @default("PUBLISHED")
+
+  authorId String
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes Int @default(0)
+  comments Comment[]
+  notifications Notification[]
 }
 
 model Comment {
   id String @id @default(cuid())
-  text String
-  authorId String
-  postId String
-  author User @relation(fields: [authorId], references: [id])
-  post Post @relation(fields: [postId], references: [id])
+  content String
   createdAt DateTime @default(now())
+  
+  authorId String
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  postId String
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 }
