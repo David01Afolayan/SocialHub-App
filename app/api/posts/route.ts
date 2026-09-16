@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { auth } from "@/app/api/auth/[...nextauth]/route"
+import { auth } from "@/auth"
 import { normalizeMediaUrls } from "@/lib/media"
 import { NextResponse } from "next/server"
 
@@ -7,7 +7,8 @@ export async function GET(req: Request) {
   const searchParams = new URL(req.url).searchParams
   const query = searchParams.get("q")?.trim()
   const mine = searchParams.get("mine") === "1"
-  const session = mine ? await auth() : null
+  const session = await auth()
+  const userId = session?.user?.id
   if (mine && !session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -17,18 +18,55 @@ export async function GET(req: Request) {
       ...(mine
         ? { authorId: session?.user?.id }
         : {
-            status: "PUBLISHED",
+            published: true,
             OR: [{ scheduledAt: null }, { scheduledAt: { lte: new Date() } }],
           }),
       ...(query
         ? { content: { contains: query, mode: "insensitive" as const } }
         : {}),
     },
-    include: { author: true },
+    include: {
+      author: {
+        include: {
+          followers: userId
+            ? {
+                where: { followerId: userId },
+                select: { id: true },
+              }
+            : false,
+        },
+      },
+      _count: {
+        select: {
+          likes: true,
+          comments: true,
+          bookmarks: true,
+        },
+      },
+      likes: userId
+        ? {
+            where: { userId },
+            select: { id: true },
+          }
+        : false,
+    },
     orderBy: { createdAt: "desc" },
   })
 
-  return NextResponse.json(posts)
+  return NextResponse.json(
+    posts.map((post) => ({
+      ...post,
+      author: {
+        ...post.author,
+        followers: undefined,
+      },
+      likeCount: post._count.likes,
+      commentCount: post._count.comments,
+      bookmarkCount: post._count.bookmarks,
+      liked: userId ? post.likes.length > 0 : false,
+      following: userId ? post.author.followers.length > 0 : false,
+    })),
+  )
 }
 
 export async function POST(req: Request) {
@@ -62,7 +100,7 @@ export async function POST(req: Request) {
         mediaUrls,
         authorId: session.user.id,
         scheduledAt: publishAt,
-        status: publishAt ? "SCHEDULED" : "PUBLISHED",
+        published: !publishAt,
       },
     })
 

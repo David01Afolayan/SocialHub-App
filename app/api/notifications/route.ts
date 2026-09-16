@@ -9,8 +9,7 @@ export async function GET() {
   }
 
   const notifications = await prisma.notification.findMany({
-    where: { recipientId: session.user.id },
-    include: { actor: true },
+    where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
     take: 20,
   })
@@ -25,8 +24,8 @@ export async function PATCH() {
   }
 
   await prisma.notification.updateMany({
-    where: { recipientId: session.user.id, readAt: null },
-    data: { readAt: new Date() },
+    where: { userId: session.user.id, read: false },
+    data: { read: true },
   })
 
   return NextResponse.json({ success: true })

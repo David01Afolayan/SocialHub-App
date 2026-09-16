@@ -20,8 +20,15 @@ export async function GET(request: Request) {
   }
 
   const messages = await prisma.chatMessage.findMany({
-    where: mode === "private" ? { mode, authorId: session.user.id } : { mode },
-    include: { author: { select: { id: true, name: true, image: true } } },
+    where:
+      mode === "private"
+        ? {
+            OR: [
+              { senderId: session.user.id },
+              { receiverId: session.user.id },
+            ],
+          }
+        : {},
     orderBy: { createdAt: "asc" },
     take: 100,
   })
@@ -37,16 +44,18 @@ export async function POST(request: Request) {
 
   const body = await request.json()
   const content = typeof body.content === "string" ? body.content.trim() : ""
-  const mediaUrl = typeof body.mediaUrl === "string" ? body.mediaUrl.trim() : ""
-  const mediaType = body.mediaType === "audio" || body.mediaType === "video" ? body.mediaType : null
   const mode = body.mode
-  if ((!content && !mediaUrl) || content.length > 2000 || !isChatMode(mode) || (mediaUrl && !mediaType)) {
+  const receiverId = typeof body.receiverId === "string" ? body.receiverId : ""
+  if (!content || content.length > 2000 || !isChatMode(mode) || !receiverId) {
     return NextResponse.json({ error: "Valid content, media, and chat mode are required" }, { status: 400 })
   }
 
   const message = await prisma.chatMessage.create({
-    data: { content, mediaUrl: mediaUrl || null, mediaType, mode, authorId: session.user.id },
-    include: { author: { select: { id: true, name: true, image: true } } },
+    data: {
+      content,
+      senderId: session.user.id,
+      receiverId,
+    },
   })
 
   return NextResponse.json(message, { status: 201 })

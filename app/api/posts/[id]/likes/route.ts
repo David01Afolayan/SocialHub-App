@@ -22,27 +22,39 @@ export async function POST(
       return NextResponse.json({ error: "Post not found" }, { status: 404 })
     }
 
-    const updatedPost = await prisma.post.update({
-      where: { id },
-      data: { likes: { increment: 1 } },
+    const existingLike = await prisma.like.findUnique({
+      where: {
+        userId_postId: {
+          userId: session.user.id,
+          postId: id,
+        },
+      },
+    })
+
+    if (existingLike) {
+      await prisma.like.delete({ where: { id: existingLike.id } })
+      return NextResponse.json({ liked: false })
+    }
+
+    await prisma.like.create({
+      data: {
+        userId: session.user.id,
+        postId: id,
+      },
     })
 
     if (post.authorId !== session.user.id) {
-      const actor = await prisma.user.findUnique({ where: { id: session.user.id } })
-      const message = `${actor?.name ?? "Someone"} liked your post`
-
       await prisma.notification.create({
         data: {
-          type: "like",
-          message,
-          recipientId: post.authorId,
-          actorId: session.user.id,
+          userId: post.authorId,
+          type: "LIKE",
+          message: `${session.user.name ?? "Someone"} liked your post`,
           postId: post.id,
         },
       })
     }
 
-    return NextResponse.json(updatedPost)
+    return NextResponse.json({ liked: true })
   } catch (error) {
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
   }

@@ -1,75 +1,79 @@
+import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { NextResponse } from "next/server"
 
-type RouteContext = { params: Promise<{ id: string }> }
-
-export async function POST(_req: Request, { params }: RouteContext) {
+export async function POST(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     const session = await auth()
-    const { id } = await params
-
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    if (session.user.id === id) {
-      return NextResponse.json({ error: "You cannot follow yourself" }, { status: 400 })
+    const { id: targetUserId } = await params
+    const followerId = session.user.id
+
+    if (followerId === targetUserId) {
+      return NextResponse.json(
+        { error: "You cannot follow yourself." },
+        { status: 400 },
+      )
     }
 
-    const targetUser = await prisma.user.findUnique({ where: { id } })
+    const targetUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        name: true,
+      },
+    })
+
     if (!targetUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+      return NextResponse.json({ error: "User not found." }, { status: 404 })
     }
 
-    const follow = await prisma.follow.upsert({
+    const existingFollow = await prisma.follow.findUnique({
       where: {
         followerId_followingId: {
-          followerId: session.user.id,
-          followingId: id,
+          followerId,
+          followingId: targetUserId,
         },
       },
-      update: {},
-      create: {
-        followerId: session.user.id,
-        followingId: id,
-      },
     })
 
-    const actor = await prisma.user.findUnique({ where: { id: session.user.id } })
-    await prisma.notification.create({
-      data: {
-        type: "follow",
-        message: `${actor?.name ?? "Someone"} followed you`,
-        recipientId: id,
-        actorId: session.user.id,
-      },
-    })
+    if (existingFollow) {
+      await prisma.follow.delete({
+        where: {
+          id: existingFollow.id,
+        },
+      })
 
-    return NextResponse.json({ success: true, followId: follow.id, following: true })
-  } catch {
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
-  }
-}
-
-export async function DELETE(_req: Request, { params }: RouteContext) {
-  try {
-    const session = await auth()
-    const { id } = await params
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ following: false })
     }
 
-    await prisma.follow.deleteMany({
-      where: {
-        followerId: session.user.id,
-        followingId: id,
+    await prisma.follow.create({
+      data: {
+        followerId,
+        followingId: targetUserId,
       },
     })
 
-    return NextResponse.json({ success: true, following: false })
-  } catch {
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
+    await prisma.notification.create({
+      data: {
+        userId: targetUserId,
+        type: "FOLLOW",
+        message: `${session.user.name ?? "Someone"} started following you.`,
+      },
+    })
+
+    return NextResponse.json({ following: true })
+  } catch (error) {
+    console.error("FOLLOW_ERROR", error)
+    return NextResponse.json(
+      { error: "Something went wrong while updating the follow." },
+      { status: 500 },
+    )
   }
 }

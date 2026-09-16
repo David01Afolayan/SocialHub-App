@@ -13,6 +13,7 @@ export default function Home() {
   const [editingContent, setEditingContent] = useState("")
   const [search, setSearch] = useState("")
   const [posts, setPosts] = useState<any[]>([])
+  const [following, setFollowing] = useState<Record<string, boolean>>({})
   const [notifications, setNotifications] = useState<any[]>([])
   const [showNotifications, setShowNotifications] = useState(false)
   const [mediaUrlsInput, setMediaUrlsInput] = useState("")
@@ -31,6 +32,14 @@ export default function Home() {
     if (res.ok) {
       const data = await res.json()
       setPosts(data)
+
+      const followState: Record<string, boolean> = {}
+      for (const post of data) {
+        if (post.authorId && post.authorId !== session?.user?.id) {
+          followState[post.authorId] = Boolean(post.following)
+        }
+      }
+      setFollowing(followState)
     }
   }
 
@@ -113,6 +122,28 @@ export default function Home() {
     if (res.ok) {
       const data = await res.json()
       setComments((current) => ({ ...current, [postId]: data }))
+    }
+  }
+
+  const handleFollow = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/follow`, {
+        method: "POST",
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        alert(data.error || "Unable to update follow")
+        return
+      }
+
+      setFollowing((current) => ({
+        ...current,
+        [userId]: data.following,
+      }))
+    } catch (error) {
+      console.error("FOLLOW_ERROR", error)
+      alert("Something went wrong")
     }
   }
 
@@ -357,13 +388,14 @@ export default function Home() {
                         </div>
                       ) : (
                         <button
-                          className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
-                          onClick={async () => {
-                            await fetch(`/api/users/${p.authorId}/follow`, { method: "POST" })
-                            await fetchPosts()
-                          }}
+                          onClick={() => handleFollow(p.authorId)}
+                          className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+                            following[p.authorId]
+                              ? "border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200"
+                              : "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                          }`}
                         >
-                          Follow
+                          {following[p.authorId] ? "Following ✓" : "Follow"}
                         </button>
                       )}
                     </div>

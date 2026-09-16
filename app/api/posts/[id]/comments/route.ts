@@ -9,7 +9,7 @@ export async function GET(
   const { id } = await params
   const comments = await prisma.comment.findMany({
     where: { postId: id },
-    include: { author: true },
+    include: { user: true },
     orderBy: { createdAt: "asc" },
   })
   return NextResponse.json(comments)
@@ -40,21 +40,17 @@ export async function POST(
       data: {
         content: content.trim(),
         postId: id,
-        authorId: session.user.id,
+        userId: session.user.id,
       },
-      include: { author: true },
+      include: { user: true },
     })
 
     if (post.authorId !== session.user.id) {
-      const actor = await prisma.user.findUnique({ where: { id: session.user.id } })
-      const message = `${actor?.name ?? "Someone"} commented on your post`
-
       await prisma.notification.create({
         data: {
-          type: "comment",
-          message,
-          recipientId: post.authorId,
-          actorId: session.user.id,
+          userId: post.authorId,
+          type: "COMMENT",
+          message: `${session.user.name ?? "Someone"} commented on your post`,
           postId: post.id,
         },
       })
