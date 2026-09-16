@@ -281,7 +281,10 @@ export default function Home() {
                 </span>
               </div>
 
+              <label htmlFor="post-content" className="sr-only">Post content</label>
               <textarea
+                id="post-content"
+                name="content"
                 value={post}
                 onChange={(e) => setPost(e.target.value)}
                 placeholder="Share an update, idea, or announcement..."
@@ -326,7 +329,10 @@ export default function Home() {
                       </div>
                     ) : null}
 
+                    <label htmlFor="media-urls" className="sr-only">Media URLs</label>
                     <textarea
+                      id="media-urls"
+                      name="mediaUrls"
                       value={mediaUrlsInput}
                       onChange={(event) => setMediaUrlsInput(event.target.value)}
                       placeholder="Or paste image URLs, one per line"
@@ -455,6 +461,8 @@ export default function Home() {
 
                     <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-3 text-sm">
                       <button
+                        aria-label={`Like post by ${p.author?.name ?? "user"}`}
+                        title="Like post"
                         onClick={async () => {
                           await fetch(`/api/posts/${p.id}/likes`, { method: "POST" })
                           await fetchPosts()
