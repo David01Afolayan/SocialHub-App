@@ -35,7 +35,7 @@ export default function NavigationBar() {
     <header className="nav-shell sticky top-0 z-40 border-b backdrop-blur-md">
       <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6">
         <Link href="/" className="flex items-center gap-3" onClick={closeMenu}>
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 text-sm font-black text-white shadow-lg shadow-indigo-500/25">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-indigo-600 via-blue-600 to-cyan-500 text-sm font-black text-white shadow-lg shadow-indigo-500/25">
             S
           </div>
           <div>
@@ -85,7 +85,7 @@ export default function NavigationBar() {
                 href="/profile"
                 className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-2.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:border-indigo-300 hover:bg-white sm:inline-flex"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 text-[10px] font-black text-white">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-cyan-500 text-[10px] font-black text-white">
                   {nameInitials}
                 </span>
                 {session.user?.name ?? "Profile"}

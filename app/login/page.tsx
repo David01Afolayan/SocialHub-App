@@ -84,13 +84,13 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-5xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_35px_70px_rgba(15,23,42,0.12)]">
+      <div className="w-full max-w-5xl overflow-hidden rounded-4xl border border-slate-200 bg-white shadow-[0_35px_70px_rgba(15,23,42,0.12)]">
         <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
-          <section className="relative overflow-hidden bg-gradient-to-br from-indigo-700 via-blue-700 to-cyan-600 p-8 md:p-10">
+          <section className="relative overflow-hidden bg-linear-to-br from-indigo-700 via-blue-700 to-cyan-600 p-8 md:p-10">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.2),transparent_30%)]" />
             <div className="relative flex h-full flex-col justify-between">
               <div>
-                <span className="section-tag !bg-white/10 !text-sky-50 !border-white/20">SocialHub</span>
+                <span className="section-tag bg-white/10! text-sky-50! border-white/20!">SocialHub</span>
                 <h1 className="mt-6 max-w-md text-4xl font-black tracking-tight text-white md:text-5xl">Build a more intentional community.</h1>
                 <p className="mt-4 max-w-md text-base text-indigo-100">Plan content, keep conversations flowing, and turn attention into momentum.</p>
               </div>
