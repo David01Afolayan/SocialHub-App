@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
+import { publishUserEvent } from "@/lib/realtime"
 
 export async function POST(
   _req: Request,
@@ -51,6 +52,11 @@ export async function POST(
           message: `${session.user.name ?? "Someone"} liked your post`,
           postId: post.id,
         },
+      })
+      await publishUserEvent(post.authorId, "notification:new", {
+        type: "LIKE",
+        message: `${session.user.name ?? "Someone"} liked your post`,
+        postId: post.id,
       })
     }
 

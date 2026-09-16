@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { publishUserEvent } from "@/lib/realtime"
 import { NextResponse } from "next/server"
 
 export async function GET(
@@ -53,6 +54,11 @@ export async function POST(
           message: `${session.user.name ?? "Someone"} commented on your post`,
           postId: post.id,
         },
+      })
+      await publishUserEvent(post.authorId, "notification:new", {
+        type: "COMMENT",
+        message: `${session.user.name ?? "Someone"} commented on your post`,
+        postId: post.id,
       })
     }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { publishUserEvent } from "@/lib/realtime"
 
 export async function POST(
   _request: Request,
@@ -66,6 +67,10 @@ export async function POST(
         type: "FOLLOW",
         message: `${session.user.name ?? "Someone"} started following you.`,
       },
+    })
+    await publishUserEvent(targetUserId, "notification:new", {
+      type: "FOLLOW",
+      message: `${session.user.name ?? "Someone"} started following you.`,
     })
 
     return NextResponse.json({ following: true })

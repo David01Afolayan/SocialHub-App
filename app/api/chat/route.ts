@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { publishUserEvent } from "@/lib/realtime"
 import { NextResponse } from "next/server"
 
 const modes = ["private", "public"] as const
@@ -58,5 +59,6 @@ export async function POST(request: Request) {
     },
   })
 
+  await publishUserEvent(receiverId, "message:new", message)
   return NextResponse.json(message, { status: 201 })
 }
