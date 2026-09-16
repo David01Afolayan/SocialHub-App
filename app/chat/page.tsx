@@ -1,20 +1,30 @@
 "use client"
 
 import { useSession } from "next-auth/react"
-import { FormEvent, useEffect, useState } from "react"
-import BackButton from "@/components/back-button"
+import { FormEvent, useState } from "react"
 
 type ChatMode = "private" | "public"
 
 type Message = {
-  id: string
-  authorId: string
+  id: number
   author: string
   initials: string
   text: string
   time: string
   own?: boolean
 }
+
+const privateMessages: Message[] = [
+  { id: 1, author: "Maya Chen", initials: "MC", text: "The launch plan is ready for a final review. I added the new audience notes to the brief.", time: "9:41 AM" },
+  { id: 2, author: "You", initials: "YU", text: "Perfect. I will review the creative direction before our afternoon sync.", time: "9:44 AM", own: true },
+  { id: 3, author: "Maya Chen", initials: "MC", text: "Great, I will bring the performance snapshot to the call.", time: "9:46 AM" },
+]
+
+const publicMessages: Message[] = [
+  { id: 1, author: "Jordan Lee", initials: "JL", text: "What is everyone experimenting with this week? I am testing shorter hooks in the first two seconds.", time: "10:12 AM" },
+  { id: 2, author: "Priya Shah", initials: "PS", text: "I am trying a behind-the-scenes series. The first post is already getting thoughtful replies.", time: "10:18 AM" },
+  { id: 3, author: "You", initials: "YU", text: "That sounds promising. I have been seeing the same lift from more personal context.", time: "10:22 AM", own: true },
+]
 
 const conversations = {
   private: [
@@ -33,70 +43,23 @@ export default function ChatPage() {
   const { data: session, status } = useSession()
   const [mode, setMode] = useState<ChatMode>("private")
   const [draft, setDraft] = useState("")
-  const [messages, setMessages] = useState<Message[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState("")
-
-  useEffect(() => {
-    if (!session?.user?.id) return
-
-    const loadMessages = async () => {
-      setIsLoading(true)
-      setError("")
-      try {
-        const response = await fetch(`/api/chat?mode=${mode}`)
-        if (!response.ok) throw new Error("Unable to load messages")
-        const data = await response.json()
-        setMessages(data.map((message: { id: string; authorId: string; content: string; createdAt: string; author: { name?: string | null } }) => ({
-          id: message.id,
-          authorId: message.authorId,
-          author: message.author.name ?? "Community member",
-          initials: (message.author.name ?? "CM").slice(0, 2).toUpperCase(),
-          text: message.content,
-          time: new Date(message.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-          own: message.authorId === session.user.id,
-        })))
-      } catch {
-        setError("Could not load messages.")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    void loadMessages()
-  }, [mode, session?.user?.id])
+  const [sentMessages, setSentMessages] = useState<Message[]>([])
 
   if (status === "loading") return <main className="p-8">Loading chat...</main>
   if (!session) return <main className="p-8">Sign in to access chat.</main>
 
+  const messages = mode === "private" ? privateMessages : publicMessages
   const activeConversation = conversations[mode][0]
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const text = draft.trim()
     if (!text) return
 
-    setError("")
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: text, mode }),
-    })
-    if (!response.ok) {
-      setError("Could not send your message.")
-      return
-    }
-
-    const message = await response.json()
-    setMessages((current) => [...current, {
-      id: message.id,
-      authorId: message.authorId,
-      author: "You",
-      initials: "YU",
-      text: message.content,
-      time: new Date(message.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-      own: true,
-    }])
+    setSentMessages((current) => [
+      ...current,
+      { id: Date.now(), author: "You", initials: "YU", text, time: "Just now", own: true },
+    ])
     setDraft("")
   }
 
@@ -105,9 +68,6 @@ export default function ChatPage() {
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="mb-4">
-              <BackButton />
-            </div>
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-sky-600">Conversations</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Chat with your community</h1>
             <p className="mt-2 max-w-xl text-sm text-slate-500">Keep focused team conversations private or open the floor to everyone.</p>
@@ -122,6 +82,7 @@ export default function ChatPage() {
                 aria-selected={mode === chatMode}
                 onClick={() => {
                   setMode(chatMode)
+                  setSentMessages([])
                 }}
                 className={`rounded-lg px-4 py-2 text-sm font-semibold capitalize transition ${mode === chatMode ? "bg-slate-950 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
               >
@@ -169,9 +130,7 @@ export default function ChatPage() {
 
             <div className="flex-1 space-y-5 overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.08),transparent_35%)] px-5 py-6 md:px-7">
               <div className="text-center text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">Today</div>
-              {isLoading ? <p className="text-center text-sm text-slate-400">Loading messages...</p> : null}
-              {!isLoading && !messages.length ? <p className="text-center text-sm text-slate-400">No messages yet. Start the conversation.</p> : null}
-              {messages.map((message) => (
+              {[...messages, ...sentMessages].map((message) => (
                 <div key={message.id} className={`flex items-end gap-3 ${message.own ? "justify-end" : ""}`}>
                   {!message.own ? <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-200 text-[10px] font-bold text-slate-600">{message.initials}</span> : null}
                   <div className={`max-w-[80%] md:max-w-[65%] ${message.own ? "items-end" : "items-start"}`}>
@@ -183,7 +142,6 @@ export default function ChatPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="border-t border-slate-200 bg-white p-4 md:p-5">
-              {error ? <p className="mb-2 px-2 text-xs text-rose-600">{error}</p> : null}
               <div className="flex items-end gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-2 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-100">
                 <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={mode === "private" ? "Message your team..." : "Share with the community..."} rows={2} className="min-h-12 flex-1 resize-none border-0 bg-transparent px-2 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none" />
                 <button type="submit" className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-600">Send</button>

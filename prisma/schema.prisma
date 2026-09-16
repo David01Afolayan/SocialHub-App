@@ -59,6 +59,8 @@ model User {
 model ChatMessage {
   id String @id @default(cuid())
   content String @db.Text
+  mediaUrl String? @db.Text
+  mediaType String?
   mode String
   createdAt DateTime @default(now())
 

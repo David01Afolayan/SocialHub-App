@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/app/api/auth/[...nextauth]/route"
+import { normalizeMediaUrls } from "@/lib/media"
 import { NextResponse } from "next/server"
 
 export async function GET(req: Request) {
@@ -37,14 +38,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { content, scheduledAt } = await req.json()
-    if (!content) {
-      return NextResponse.json({ error: "Content required" }, { status: 400 })
+    const body = await req.json()
+    const content = typeof body.content === "string" ? body.content.trim() : ""
+    const mediaUrls = normalizeMediaUrls(body.mediaUrls)
+    if (!content && mediaUrls.length === 0) {
+      return NextResponse.json({ error: "Content or media required" }, { status: 400 })
     }
 
     let publishAt: Date | null = null
-    if (scheduledAt) {
-      publishAt = new Date(scheduledAt)
+    if (body.scheduledAt) {
+      publishAt = new Date(body.scheduledAt)
       if (Number.isNaN(publishAt.getTime()) || publishAt <= new Date()) {
         return NextResponse.json(
           { error: "Scheduled time must be a valid future date" },
@@ -56,6 +59,7 @@ export async function POST(req: Request) {
     const post = await prisma.post.create({
       data: {
         content,
+        mediaUrls,
         authorId: session.user.id,
         scheduledAt: publishAt,
         status: publishAt ? "SCHEDULED" : "PUBLISHED",

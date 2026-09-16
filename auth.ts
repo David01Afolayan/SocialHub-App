@@ -11,6 +11,7 @@ const hasGoogleConfig = Boolean(
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  trustHost: true,
   adapter: PrismaAdapter(prisma),
   providers: [
     ...(hasGoogleConfig

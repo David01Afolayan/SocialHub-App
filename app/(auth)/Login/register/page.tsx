@@ -79,7 +79,7 @@ export default function LoginPage() {
 
         <button 
           type="button" 
-          onClick={() => signIn("google")}
+          onClick={() => signIn("google", { callbackUrl: "/" })}
           className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
         >
           Sign in with Google

@@ -1,6 +1,6 @@
 "use client"
 
-import { useSession, signIn, signOut } from "next-auth/react"
+import { useSession, signIn } from "next-auth/react"
 import { useEffect, useState } from "react"
 
 export default function Home() {
@@ -16,7 +16,7 @@ export default function Home() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [showNotifications, setShowNotifications] = useState(false)
   const [mediaUrlsInput, setMediaUrlsInput] = useState("")
-  const [selectedImages, setSelectedImages] = useState<string[]>([])
+  const [selectedMedia, setSelectedMedia] = useState<string[]>([])
 
   const fetchNotifications = async () => {
     const res = await fetch("/api/notifications")
@@ -48,19 +48,19 @@ export default function Home() {
       reader.readAsDataURL(file)
     })
 
-  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? [])
     if (!files.length) return
 
     const urls = await Promise.all(files.map((file) => readFileAsDataUrl(file)))
-    setSelectedImages((current) => [...current, ...urls])
+    setSelectedMedia((current) => [...current, ...urls])
     event.target.value = ""
   }
 
   const handlePost = async () => {
-    if (!post.trim() && selectedImages.length === 0) return
+    if (!post.trim() && selectedMedia.length === 0) return
 
-    const normalizedMediaUrls = [...selectedImages, ...mediaUrlsInput
+    const normalizedMediaUrls = [...selectedMedia, ...mediaUrlsInput
       .split(/\n|,/) 
       .map((value) => value.trim()) 
       .filter(Boolean)]
@@ -79,7 +79,7 @@ export default function Home() {
       setPost("")
       setScheduledAt("")
       setMediaUrlsInput("")
-      setSelectedImages([])
+      setSelectedMedia([])
       await fetchPosts()
     } else {
       const body = await res.json().catch(() => ({}))
@@ -133,17 +133,18 @@ export default function Home() {
 
   if (!session) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-10 text-slate-50">
-        <div className="w-full max-w-6xl overflow-hidden rounded-[28px] border border-white/10 bg-white/5 shadow-2xl shadow-sky-500/10 backdrop-blur-sm">
-          <div className="grid min-h-45 lg:grid-cols-2">
-            <section className="flex flex-col justify-between bg-linear-to-br from-sky-600 via-blue-700 to-indigo-900 p-8 md:p-12">
-              <div>
-                <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-sm font-medium text-sky-100">
+      <main className="flex min-h-screen items-center justify-center px-6 py-10 text-slate-50">
+        <div className="w-full max-w-6xl overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/80 shadow-[0_30px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+          <div className="grid min-h-[560px] lg:grid-cols-2">
+            <section className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-indigo-700 via-blue-700 to-cyan-600 p-8 md:p-12">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.2),transparent_35%)]" />
+              <div className="relative">
+                <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-sm font-medium text-sky-50">
                   <span className="h-2 w-2 rounded-full bg-emerald-400" />
                   SocialHub Pro
                 </div>
 
-                <h1 className="max-w-md text-4xl font-bold tracking-tight md:text-5xl">
+                <h1 className="max-w-md text-4xl font-black tracking-tight md:text-5xl">
                   Build your audience with clarity and momentum.
                 </h1>
                 <p className="mt-5 max-w-lg text-base text-sky-100/80 md:text-lg">
@@ -151,13 +152,13 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              <div className="relative mt-10 grid gap-4 sm:grid-cols-3">
                 {[
                   ["12k+", "Engaged users"],
                   ["4.9/5", "Average rating"],
                   ["24/7", "Community access"],
                 ].map(([value, label]) => (
-                  <div key={label} className="rounded-2xl border border-white/15 bg-slate-950/10 p-4">
+                  <div key={label} className="rounded-2xl border border-white/15 bg-slate-950/10 p-4 shadow-lg shadow-slate-900/10">
                     <div className="text-2xl font-bold text-white">{value}</div>
                     <div className="mt-1 text-sm text-sky-100/80">{label}</div>
                   </div>
@@ -166,9 +167,9 @@ export default function Home() {
             </section>
 
             <section className="flex items-center justify-center bg-slate-950 p-8 md:p-12">
-              <div className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl shadow-slate-950/60">
+              <div className="w-full max-w-md rounded-[28px] border border-slate-800 bg-slate-900/90 p-8 shadow-[0_25px_60px_rgba(2,6,23,0.7)]">
                 <div className="mb-6 text-center">
-                  <p className="text-sm font-medium uppercase tracking-[0.2em] text-sky-400">
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-300">
                     Welcome back
                   </p>
                   <h2 className="mt-3 text-3xl font-semibold text-white">Sign in</h2>
@@ -183,8 +184,8 @@ export default function Home() {
                   </a>
 
                   <button
-                    onClick={() => signIn("google")}
-                    className="flex w-full items-center justify-center rounded-xl bg-sky-500 px-4 py-3 text-base font-medium text-white shadow-lg shadow-sky-500/20 hover:bg-sky-400"
+                    onClick={() => signIn("google", { callbackUrl: "/" })}
+                    className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 px-4 py-3 text-base font-medium text-white shadow-lg shadow-sky-500/20 hover:from-sky-400 hover:to-cyan-400"
                   >
                     Continue with Google
                   </button>
@@ -208,14 +209,27 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-900 md:px-6">
-      <div className="mx-auto max-w-6xl">
+    <main className="min-h-screen px-4 py-8 text-slate-900 md:px-6">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div className="surface-card rounded-[30px] p-5 md:p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <span className="section-tag">Creator hub</span>
+              <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Your social command center</h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="status-pill">Active</div>
+              <button className="ghost-action rounded-xl px-4 py-2.5 text-sm font-semibold">View insights</button>
+            </div>
+          </div>
+        </div>
+
         <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
           <section className="space-y-6">
-            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-lg shadow-slate-200/60 md:p-6">
-              <div className="mb-4 flex items-center justify-between">
+            <div className="workspace-surface rounded-[30px] p-5 md:p-6">
+              <div className="mb-5 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-slate-900">Create a post</h2>
-                <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
+                <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
                   {scheduledAt ? "Scheduled" : "Live"}
                 </span>
               </div>
@@ -224,14 +238,14 @@ export default function Home() {
                 value={post}
                 onChange={(e) => setPost(e.target.value)}
                 placeholder="Share an update, idea, or announcement..."
-                className="min-h-32.5 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:border-sky-400"
+                className="min-h-32.5 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:border-indigo-400"
               />
 
               <div className="mt-4 space-y-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
-                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageSelect} />
-                    Add images
+                    <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleMediaSelect} />
+                    Add media
                   </label>
 
                   <label className="flex flex-col gap-2 text-sm font-medium text-slate-600 md:items-end">
@@ -246,16 +260,16 @@ export default function Home() {
                   </label>
                 </div>
 
-                {selectedImages.length > 0 || mediaUrlsInput.trim() ? (
+                {selectedMedia.length > 0 || mediaUrlsInput.trim() ? (
                   <div className="space-y-3">
-                    {selectedImages.length > 0 ? (
+                    {selectedMedia.length > 0 ? (
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {selectedImages.map((url, index) => (
+                        {selectedMedia.map((url, index) => (
                           <div key={`${url}-${index}`} className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                            <img src={url} alt={`Upload preview ${index + 1}`} className="h-24 w-full object-cover" />
+                            {url.startsWith("data:video/") ? <video src={url} controls className="h-24 w-full object-cover" /> : <img src={url} alt={`Upload preview ${index + 1}`} className="h-24 w-full object-cover" />}
                             <button
                               type="button"
-                              onClick={() => setSelectedImages((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                              onClick={() => setSelectedMedia((current) => current.filter((_, itemIndex) => itemIndex !== index))}
                               className="absolute right-1 top-1 rounded-full bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-medium text-white"
                             >
                               Remove
@@ -269,7 +283,7 @@ export default function Home() {
                       value={mediaUrlsInput}
                       onChange={(event) => setMediaUrlsInput(event.target.value)}
                       placeholder="Or paste image URLs, one per line"
-                      className="min-h-20 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:border-sky-400"
+                      className="min-h-20 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 placeholder:text-slate-400 focus:border-indigo-400"
                     />
                   </div>
                 ) : null}
@@ -277,7 +291,7 @@ export default function Home() {
                 <div className="flex justify-end">
                   <button
                     onClick={handlePost}
-                    className="rounded-xl bg-linear-to-r from-sky-600 to-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-600/20 hover:from-sky-500 hover:to-indigo-500"
+                    className="primary-action rounded-xl px-5 py-3 text-sm font-semibold"
                   >
                     {scheduledAt ? "Schedule post" : "Publish"}
                   </button>
@@ -285,10 +299,10 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-lg shadow-slate-200/60 md:p-6">
+            <div className="workspace-surface rounded-[30px] p-5 md:p-6">
               <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <h2 className="text-lg font-semibold text-slate-900">Community feed</h2>
-                <div className="flex w-full max-w-md items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <div className="flex w-full max-w-md items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 shadow-inner shadow-white/60">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 text-slate-400">
                     <circle cx="11" cy="11" r="6" />
                     <path d="M16 16L21 21" />
@@ -299,7 +313,7 @@ export default function Home() {
                     placeholder="Search posts"
                     className="w-full border-0 bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
                   />
-                  <button onClick={() => fetchPosts()} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-700">
+                  <button onClick={() => fetchPosts()} className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-medium text-white hover:bg-slate-700">
                     Search
                   </button>
                 </div>
@@ -307,13 +321,13 @@ export default function Home() {
 
               <div className="space-y-4">
                 {posts.map((p) => (
-                  <article key={p.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <article key={p.id} className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         {p.author?.image ? (
-                          <img src={p.author.image} alt={p.author?.name ?? "User"} className="h-10 w-10 rounded-full object-cover ring-2 ring-white" />
+                          <img src={p.author.image} alt={p.author?.name ?? "User"} className="h-11 w-11 rounded-full object-cover ring-2 ring-white shadow-sm" />
                         ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-100 font-semibold text-sky-700">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 font-semibold text-white shadow-lg shadow-indigo-500/15">
                             {(p.author?.name ?? "U").slice(0, 1).toUpperCase()}
                           </div>
                         )}
@@ -324,26 +338,26 @@ export default function Home() {
                       </div>
 
                       {p.authorId === session.user.id ? (
-                        <div className="flex items-center gap-2 text-xs">
+                        <div className="flex gap-2">
                           <button
                             onClick={() => {
                               setEditingPostId(p.id)
                               setEditingContent(p.content)
                             }}
-                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-700 hover:border-slate-300"
+                            className="ghost-action rounded-lg px-2.5 py-1.5 text-sm font-medium"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDelete(p.id)}
-                            className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-red-600 hover:bg-red-100"
+                            className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100"
                           >
                             Delete
                           </button>
                         </div>
                       ) : (
                         <button
-                          className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-100"
+                          className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
                           onClick={async () => {
                             await fetch(`/api/users/${p.authorId}/follow`, { method: "POST" })
                             await fetchPosts()
@@ -362,10 +376,10 @@ export default function Home() {
                           className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-800"
                         />
                         <div className="flex gap-2">
-                          <button onClick={() => handleEdit(p.id)} className="rounded-xl bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500">
+                          <button onClick={() => handleEdit(p.id)} className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500">
                             Save
                           </button>
-                          <button onClick={() => setEditingPostId(null)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                          <button onClick={() => setEditingPostId(null)} className="ghost-action rounded-xl px-3 py-2 text-sm font-medium">
                             Cancel
                           </button>
                         </div>
@@ -376,7 +390,7 @@ export default function Home() {
                         {p.mediaUrls?.length ? (
                           <div className={`mb-4 grid gap-2 ${p.mediaUrls.length > 1 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
                             {p.mediaUrls.map((url: string, index: number) => (
-                              <img key={`${p.id}-${index}`} src={url} alt={`Post media ${index + 1}`} className="h-64 w-full rounded-2xl object-cover border border-slate-200" />
+                              url.startsWith("data:video/") || /\.(mp4|webm|mov)(\?.*)?$/i.test(url) ? <video key={`${p.id}-${index}`} src={url} controls className="h-64 w-full rounded-2xl border border-slate-200 object-cover" /> : <img key={`${p.id}-${index}`} src={url} alt={`Post media ${index + 1}`} className="h-64 w-full rounded-2xl border border-slate-200 object-cover" />
                             ))}
                           </div>
                         ) : null}
@@ -389,7 +403,7 @@ export default function Home() {
                           await fetch(`/api/posts/${p.id}/likes`, { method: "POST" })
                           await fetchPosts()
                         }}
-                        className="rounded-lg bg-sky-50 px-3 py-1.5 font-medium text-sky-700 hover:bg-sky-100"
+                        className="rounded-lg bg-indigo-50 px-3 py-1.5 font-medium text-indigo-700 hover:bg-indigo-100"
                       >
                         Like {p.likes ?? 0}
                       </button>
@@ -402,7 +416,7 @@ export default function Home() {
                     </div>
 
                     {comments[p.id] ? (
-                      <div className="mt-4 space-y-3 rounded-2xl bg-white p-3">
+                      <div className="mt-4 space-y-3 rounded-2xl bg-white p-3 shadow-inner shadow-slate-100">
                         {comments[p.id].map((comment) => (
                           <div key={comment.id} className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">
                             <span className="font-semibold text-slate-900">{comment.author?.name ?? "User"}:</span> {comment.content}
@@ -423,7 +437,7 @@ export default function Home() {
                           />
                           <button
                             onClick={() => handleComment(p.id)}
-                            className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700"
+                            className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800"
                           >
                             Comment
                           </button>
@@ -437,7 +451,7 @@ export default function Home() {
           </section>
 
           <aside className="space-y-6">
-            <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-lg shadow-slate-200/60">
+            <div className="workspace-surface rounded-[30px] p-5">
               <h3 className="text-base font-semibold text-slate-900">Overview</h3>
               <div className="mt-4 space-y-3">
                 {[
@@ -445,7 +459,7 @@ export default function Home() {
                   ["Engagement", "High"],
                   ["Status", "Active"],
                 ].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-3">
+                  <div key={label} className="flex items-center justify-between rounded-2xl bg-slate-50/80 px-3 py-3">
                     <span className="text-sm text-slate-600">{label}</span>
                     <span className="text-sm font-semibold text-slate-900">{value}</span>
                   </div>
@@ -453,8 +467,8 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-slate-200 bg-linear-to-br from-slate-900 to-slate-800 p-5 text-white shadow-xl shadow-slate-300/40">
-              <p className="text-sm uppercase tracking-[0.2em] text-sky-300">Performance</p>
+            <div className="rounded-[30px] border border-slate-900 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-900 p-5 text-white shadow-[0_30px_52px_rgba(15,23,42,0.3)]">
+              <p className="text-sm uppercase tracking-[0.22em] text-indigo-200">Performance</p>
               <h3 className="mt-3 text-3xl font-bold">+28.4%</h3>
               <p className="mt-2 text-sm text-slate-300">Audience growth this month across your active communities.</p>
             </div>
