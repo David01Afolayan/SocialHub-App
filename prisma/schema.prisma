@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -30,18 +30,27 @@ model User {
   sessions Session[]
 
   // Social relationships
-  posts        Post[]
-  comments     Comment[]
-  likes        Like[]
-  bookmarks    Bookmark[]
+  posts     Post[]
+  comments  Comment[]
+  likes     Like[]
+  bookmarks Bookmark[]
 
   following Follow[] @relation("Following")
   followers Follow[] @relation("Followers")
 
-  notifications Notification[]
+  notifications          Notification[]
+  notificationActors     Notification[]          @relation("NotificationActors")
+  devices                UserDevice[]
+  notificationPreference NotificationPreference?
+  searchHistory          SearchHistory[]
+  moderationReviews      ModerationResult[]
+  moderationAppeals      ModerationAppeal[]
+  appealReviews          ModerationAppeal[]      @relation("AppealReviews")
+  interests              UserInterest[]
 
-  sentMessages     ChatMessage[] @relation("SentMessages")
-  receivedMessages ChatMessage[] @relation("ReceivedMessages")
+  sentMessages            ChatMessage[]        @relation("SentMessages")
+  receivedMessages        ChatMessage[]        @relation("ReceivedMessages")
+  conversationMemberships ConversationMember[]
 
   @@index([username])
   @@index([createdAt])
@@ -52,7 +61,7 @@ model User {
 // =========================
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String @id @default(cuid())
   userId            String
   type              String
   provider          String
@@ -109,12 +118,11 @@ model Follow {
   followingId String
   createdAt   DateTime @default(now())
 
-  follower User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  follower  User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
   following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
 
   // Prevent duplicate follows
   @@unique([followerId, followingId])
-
   @@index([followerId])
   @@index([followingId])
   @@index([createdAt])
@@ -125,27 +133,36 @@ model Follow {
 // =========================
 
 model Post {
-  id          String   @id @default(cuid())
-  content     String?
-  mediaUrl    String?
-  mediaUrls   String[]
-  published   Boolean  @default(true)
-  scheduledAt DateTime?
+  id               String    @id @default(cuid())
+  content          String?
+  mediaUrl         String?
+  mediaUrls        String[]
+  published        Boolean   @default(true)
+  visibility       String    @default("PUBLIC")
+  moderationStatus String    @default("APPROVED")
+  parentPostId     String?
+  scheduledAt      DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   authorId String
-  author   User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  comments  Comment[]
-  likes     Like[]
-  bookmarks Bookmark[]
+  comments   Comment[]
+  likes      Like[]
+  bookmarks  Bookmark[]
+  hashtags   PostHashtag[]
+  parentPost Post?         @relation("PostReposts", fields: [parentPostId], references: [id], onDelete: Cascade)
+  reposts    Post[]        @relation("PostReposts")
 
   @@index([authorId])
   @@index([createdAt])
   @@index([published])
   @@index([scheduledAt])
+  @@index([visibility])
+  @@index([moderationStatus])
+  @@index([parentPostId])
 }
 
 // =========================
@@ -163,7 +180,6 @@ model Like {
 
   // One user can only like a post once
   @@unique([userId, postId])
-
   @@index([userId])
   @@index([postId])
   @@index([createdAt])
@@ -174,10 +190,11 @@ model Like {
 // =========================
 
 model Comment {
-  id        String   @id @default(cuid())
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(cuid())
+  content          String
+  moderationStatus String   @default("APPROVED")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   userId String
   postId String
@@ -188,6 +205,21 @@ model Comment {
   @@index([userId])
   @@index([postId])
   @@index([createdAt])
+  @@index([moderationStatus])
+}
+
+model UserInterest {
+  id        String   @id @default(cuid())
+  userId    String
+  topic     String
+  score     Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topic])
+  @@index([userId, score])
 }
 
 // =========================
@@ -205,7 +237,6 @@ model Bookmark {
 
   // Prevent duplicate bookmarks
   @@unique([userId, postId])
-
   @@index([userId])
   @@index([postId])
   @@index([createdAt])
@@ -218,18 +249,139 @@ model Bookmark {
 model Notification {
   id        String   @id @default(cuid())
   type      String
+  title     String   @default("")
   message   String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
   userId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  postId String?
+  postId  String?
+  actorId String?
+  actor   User?   @relation("NotificationActors", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([userId, read])
+  @@index([actorId])
+  @@index([postId])
+}
+
+model SearchHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  query     String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, query])
+}
+
+model TrendingSearch {
+  id          String   @id @default(cuid())
+  query       String   @unique
+  score       Float    @default(0)
+  searchCount Int      @default(0)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([score])
+  @@index([updatedAt])
+}
+
+model Hashtag {
+  id    String        @id @default(cuid())
+  name  String        @unique
+  posts PostHashtag[]
+
+  @@index([name])
+}
+
+model PostHashtag {
+  postId    String
+  hashtagId String
+  post      Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  hashtag   Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, hashtagId])
+  @@index([hashtagId])
+}
+
+model ModerationResult {
+  id           String    @id @default(cuid())
+  targetType   String
+  targetId     String
+  decision     String
+  score        Int
+  reasons      Json?
+  reviewed     Boolean   @default(false)
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  reviewedBy User?              @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  appeals    ModerationAppeal[]
+
+  @@index([targetType, targetId])
+  @@index([decision, createdAt])
+  @@index([reviewedById])
+}
+
+model ModerationAppeal {
+  id                 String    @id @default(cuid())
+  userId             String
+  moderationResultId String
+  reason             String
+  status             String    @default("PENDING")
+  reviewedById       String?
+  reviewedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moderationResult ModerationResult @relation(fields: [moderationResultId], references: [id], onDelete: Cascade)
+  reviewedBy       User?            @relation("AppealReviews", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model UserDevice {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  platform   String
+  deviceId   String?
+  active     Boolean  @default(true)
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([read])
-  @@index([createdAt])
+  @@index([userId, active])
+  @@index([platform])
+}
+
+model NotificationPreference {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  likes        Boolean  @default(true)
+  comments     Boolean  @default(true)
+  follows      Boolean  @default(true)
+  mentions     Boolean  @default(true)
+  messages     Boolean  @default(true)
+  reposts      Boolean  @default(true)
+  pushEnabled  Boolean  @default(true)
+  emailEnabled Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // =========================
@@ -240,17 +392,52 @@ model ChatMessage {
   id        String   @id @default(cuid())
   content   String
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  senderId    String
-  receiverId  String
+  senderId       String
+  receiverId     String
+  conversationId String?
 
-  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender       User          @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver     User          @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  read Boolean @default(false)
+  read   Boolean   @default(false)
+  readAt DateTime?
 
   @@index([senderId])
   @@index([receiverId])
   @@index([createdAt])
   @@index([senderId, receiverId])
+  @@index([conversationId, createdAt])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  name      String?
+  image     String?
+  isGroup   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  ConversationMember[]
+  messages ChatMessage[]
+
+  @@index([updatedAt])
+  @@index([isGroup])
+}
+
+model ConversationMember {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  role           String   @default("MEMBER")
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId])
 }

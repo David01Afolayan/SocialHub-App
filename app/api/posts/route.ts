@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { normalizeMediaUrls } from "@/lib/media"
 import { NextResponse } from "next/server"
+import { queueModeration } from "@/lib/jobs/moderation.job"
 
 export async function GET(req: Request) {
   const searchParams = new URL(req.url).searchParams
@@ -20,6 +21,7 @@ export async function GET(req: Request) {
         ? { authorId: session?.user?.id }
         : {
             published: true,
+            moderationStatus: "APPROVED",
             OR: [{ scheduledAt: null }, { scheduledAt: { lte: new Date() } }],
           }),
       ...(query
@@ -106,7 +108,14 @@ export async function POST(req: Request) {
         authorId: session.user.id,
         scheduledAt: publishAt,
         published: !publishAt,
+        moderationStatus: "PENDING_REVIEW",
       },
+    })
+
+    await queueModeration({
+      targetType: "POST",
+      targetId: post.id,
+      content,
     })
 
     return NextResponse.json(post)

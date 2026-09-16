@@ -7,20 +7,23 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "seed": "prisma db seed",
-    "test": "node --test tests/profile-follow.test.js tests/notifications.test.js tests/media.test.js"
+    "test": "node --test tests/profile-follow.test.js tests/notifications.test.js tests/media.test.js",
+    "worker": "tsx workers/index.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
     "@prisma/client": "^5.22.0",
     "@vercel/speed-insights": "^2.0.0",
     "bcrypt": "^6.0.0",
+    "bullmq": "^6.3.6",
+    "ioredis": "^6.0.0",
     "next": "^16.3.4",
     "next-auth": "^5.0.0-beta.32",
-    "nodemailer": "^8.0.5",
     "pusher": "^5.3.4",
     "pusher-js": "^8.6.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zod": "^4.6.5"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -28,7 +31,6 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@types/bcrypt": "^6.0.0",
-    "@types/nodemailer": "^8.0.1",
     "@types/react": "19.2.18",
     "postcss": "^8.5.25",
     "prisma": "^5.22.0",
