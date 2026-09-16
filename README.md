@@ -1,4 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SocialHub
+
+SocialHub is a full-stack social networking platform built with Next.js, TypeScript, Prisma, and PostgreSQL.
+
+## Features
+
+- Authentication with credentials and Google OAuth
+- Profiles, usernames, bios, and avatars
+- Posts, likes, comments, bookmarks, and follows
+- Notifications and direct messaging primitives
+- Search, scheduling, analytics, and admin moderation
+- Database-backed role-based authorization
+- Pusher real-time event architecture
+
+## Tech stack
+
+- **Frontend:** Next.js, React, TypeScript, Tailwind CSS
+- **Backend:** Next.js API routes, Prisma, PostgreSQL, NextAuth
+- **Real-time:** Pusher
+
+## Architecture
+
+```text
+Browser -> Next.js UI -> API routes -> Prisma -> PostgreSQL
+                              |
+                              -> Pusher temporary events
+```
+
+PostgreSQL remains the source of truth. Pusher delivers transient updates such as messages and notifications.
+
+## Local development
+
+```bash
+npm install
+npx prisma generate
+npx prisma db push
+npm run dev
+```
+
+Copy `.env.example` to `.env.local` and provide the required credentials. Do not commit `.env` or `.env.local`.
+
+To create deterministic demo data:
+
+```bash
+npm run seed
+```
+
+The seeded demo account is `demo@socialhub.dev` with password `DemoPassword123!`.
+
+## Validation
+
+```bash
+npx prisma validate
+npx tsc --noEmit
+npm run build
+```
+
+## Deployment
+
+Set the variables from `.env.example` in the deployment provider. Configure the Google OAuth callback to:
+
+`https://<your-domain>/api/auth/callback/google`
 
 ## Getting Started
 

@@ -37,20 +37,20 @@ export default function AnalyticsPage() {
         const res = await fetch("/api/posts?mine=1")
         if (!res.ok) return
 
-        const posts = await res.json()
-        const normalizedPosts = Array.isArray(posts) ? posts : []
+        const data = await res.json()
+        const normalizedPosts = Array.isArray(data) ? data : data.posts ?? []
 
         const totalPosts = normalizedPosts.length
-        const totalLikes = normalizedPosts.reduce((sum: number, post: any) => sum + Number(post.likes ?? 0), 0)
-        const totalComments = normalizedPosts.reduce((sum: number, post: any) => sum + Number(post.comments?.length ?? 0), 0)
+        const totalLikes = normalizedPosts.reduce((sum: number, post: any) => sum + Number(post.likeCount ?? post.likes ?? 0), 0)
+        const totalComments = normalizedPosts.reduce((sum: number, post: any) => sum + Number(post.commentCount ?? post.comments?.length ?? 0), 0)
         const totalFollowers = normalizedPosts.length > 0 ? Math.max(12, totalPosts * 4) : 0
 
         const sortedPosts = [...normalizedPosts]
           .map((post: any) => ({
             id: post.id,
             content: post.content,
-            likes: Number(post.likes ?? 0),
-            comments: Array.isArray(post.comments) ? post.comments.length : 0,
+            likes: Number(post.likeCount ?? post.likes ?? 0),
+            comments: Number(post.commentCount ?? post.comments?.length ?? 0),
             createdAt: post.createdAt,
           }))
           .sort((a, b) => (b.likes + b.comments) - (a.likes + a.comments))

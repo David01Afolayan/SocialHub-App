@@ -6,6 +6,7 @@ import { NextResponse } from "next/server"
 export async function GET(req: Request) {
   const searchParams = new URL(req.url).searchParams
   const query = searchParams.get("q")?.trim()
+  const cursor = searchParams.get("cursor")
   const mine = searchParams.get("mine") === "1"
   const session = await auth()
   const userId = session?.user?.id
@@ -25,6 +26,7 @@ export async function GET(req: Request) {
         ? { content: { contains: query, mode: "insensitive" as const } }
         : {}),
     },
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     include: {
       author: {
         include: {
@@ -50,11 +52,12 @@ export async function GET(req: Request) {
           }
         : false,
     },
+    take: 20,
     orderBy: { createdAt: "desc" },
   })
 
-  return NextResponse.json(
-    posts.map((post) => ({
+  return NextResponse.json({
+    posts: posts.map((post) => ({
       ...post,
       author: {
         ...post.author,
@@ -65,8 +68,10 @@ export async function GET(req: Request) {
       bookmarkCount: post._count.bookmarks,
       liked: userId ? post.likes.length > 0 : false,
       following: userId ? post.author.followers.length > 0 : false,
+      status: post.published ? "PUBLISHED" : "SCHEDULED",
     })),
-  )
+    nextCursor: posts.length === 20 ? posts[posts.length - 1].id : null,
+  })
 }
 
 export async function POST(req: Request) {

@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react"
 import BackButton from "@/components/back-button"
+import StatCard from "@/components/dashboard/StatCard"
 
 type Post = {
   id: string
@@ -19,7 +20,7 @@ export default function DashboardPage() {
     if (!session?.user?.id) return
     fetch("/api/posts?mine=1")
       .then((response) => (response.ok ? response.json() : []))
-      .then((data) => setPosts(Array.isArray(data) ? data : []))
+      .then((data) => setPosts(Array.isArray(data) ? data : data.posts ?? []))
   }, [session?.user?.id])
 
   if (status === "loading") return <main className="app-canvas flex items-center justify-center p-8 text-sm text-slate-500">Loading dashboard...</main>
@@ -51,13 +52,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {stats.map((stat) => (
-            <div key={stat.label} className="metric-card rounded-[24px] p-5">
-              <div className={`mb-4 h-10 w-10 rounded-2xl bg-gradient-to-r ${stat.accent}`} />
-              <p className="text-sm font-medium text-slate-500">{stat.label}</p>
-              <p className="mt-3 text-2xl font-bold text-slate-900">{stat.value}</p>
-            </div>
-          ))}
+          {stats.map((stat) => <StatCard key={stat.label} title={stat.label} value={stat.value} />)}
         </div>
 
         {scheduledPosts.length === 0 ? (

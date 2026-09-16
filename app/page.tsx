@@ -18,6 +18,8 @@ export default function Home() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [mediaUrlsInput, setMediaUrlsInput] = useState("")
   const [selectedMedia, setSelectedMedia] = useState<string[]>([])
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [feedError, setFeedError] = useState("")
 
   const fetchNotifications = async () => {
     const res = await fetch("/api/notifications")
@@ -31,16 +33,30 @@ export default function Home() {
     const res = await fetch(`/api/posts${searchParams}`)
     if (res.ok) {
       const data = await res.json()
-      setPosts(data)
+      const loadedPosts = Array.isArray(data) ? data : data.posts ?? []
+      setPosts(loadedPosts)
+      setNextCursor(Array.isArray(data) ? null : data.nextCursor)
+      setFeedError("")
 
       const followState: Record<string, boolean> = {}
-      for (const post of data) {
+      for (const post of loadedPosts) {
         if (post.authorId && post.authorId !== session?.user?.id) {
           followState[post.authorId] = Boolean(post.following)
         }
       }
       setFollowing(followState)
+    } else {
+      setFeedError("Unable to load the community feed.")
     }
+  }
+
+  const loadMorePosts = async () => {
+    if (!nextCursor) return
+    const res = await fetch(`/api/posts?cursor=${encodeURIComponent(nextCursor)}`)
+    if (!res.ok) return
+    const data = await res.json()
+    setPosts((current) => [...current, ...(data.posts ?? [])])
+    setNextCursor(data.nextCursor ?? null)
   }
 
   useEffect(() => {
@@ -350,6 +366,14 @@ export default function Home() {
                 </div>
               </div>
 
+              {feedError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">{feedError}</div>
+              ) : posts.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 p-10 text-center">
+                  <h3 className="font-semibold text-slate-900">No posts yet</h3>
+                  <p className="mt-1 text-sm text-slate-500">Follow people or create your first post.</p>
+                </div>
+              ) : (
               <div className="space-y-4">
                 {posts.map((p) => (
                   <article key={p.id} className="rounded-[24px] border border-slate-200 bg-slate-50/90 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
@@ -478,7 +502,13 @@ export default function Home() {
                     ) : null}
                   </article>
                 ))}
+                {nextCursor ? (
+                  <button onClick={loadMorePosts} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    Load more posts
+                  </button>
+                ) : null}
               </div>
+              )}
             </div>
           </section>
 
