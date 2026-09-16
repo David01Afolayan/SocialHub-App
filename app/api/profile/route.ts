@@ -3,6 +3,33 @@ import { prisma } from "@/lib/prisma"
 import { getProfileHandle } from "@/lib/profile"
 import { NextResponse } from "next/server"
 
+const MAX_NAME_LENGTH = 80
+const MAX_USERNAME_LENGTH = 30
+const MAX_BIO_LENGTH = 280
+
+function formatProfile(user: {
+  id: string
+  name: string | null
+  username: string | null
+  bio: string | null
+  image: string | null
+  email: string | null
+  followers?: { followerId: string }[]
+  following?: { followingId: string }[]
+}) {
+  return {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    handle: getProfileHandle(user.username ?? user.name ?? "user"),
+    bio: user.bio,
+    image: user.image,
+    email: user.email,
+    ...(user.followers ? { followersCount: user.followers.length } : {}),
+    ...(user.following ? { followingCount: user.following.length } : {}),
+  }
+}
+
 export async function GET() {
   try {
     const session = await auth()
@@ -12,7 +39,13 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        bio: true,
+        image: true,
+        email: true,
         followers: { select: { followerId: true } },
         following: { select: { followingId: true } },
       },
@@ -22,70 +55,110 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    return NextResponse.json({
-      id: user.id,
-      name: user.name,
-      username: user.username,
-      handle: getProfileHandle(user.username ?? user.name ?? "user"),
-      bio: user.bio,
-      email: user.email,
-      image: user.image,
-      followersCount: user.followers.length,
-      followingCount: user.following.length,
-    })
-  } catch {
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
+    return NextResponse.json(formatProfile(user))
+  } catch (error) {
+    console.error("GET_PROFILE_ERROR", error)
+    return NextResponse.json({ error: "Failed to load profile" }, { status: 500 })
   }
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH(request: Request) {
   try {
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { username, bio } = await req.json()
-    const nextUsername = typeof username === "string" ? username.trim() : ""
-    const nextBio = typeof bio === "string" ? bio.trim().slice(0, 200) : ""
+    const body = await request.json()
+    const name = typeof body.name === "string" ? body.name.trim() : ""
+    const username =
+      typeof body.username === "string" ? body.username.trim().toLowerCase() : ""
+    const bio = typeof body.bio === "string" ? body.bio.trim() : ""
+    const image = typeof body.image === "string" ? body.image.trim() : ""
 
-    if (nextUsername && !/^[a-zA-Z0-9_-]+$/.test(nextUsername)) {
+    if (!name) {
+      return NextResponse.json({ error: "Name is required." }, { status: 400 })
+    }
+    if (name.length > MAX_NAME_LENGTH) {
       return NextResponse.json(
-        { error: "Username can only contain letters, numbers, underscores, and dashes" },
+        { error: `Name cannot exceed ${MAX_NAME_LENGTH} characters.` },
+        { status: 400 },
+      )
+    }
+    if (!username) {
+      return NextResponse.json({ error: "Username is required." }, { status: 400 })
+    }
+    if (username.length > MAX_USERNAME_LENGTH) {
+      return NextResponse.json(
+        { error: `Username cannot exceed ${MAX_USERNAME_LENGTH} characters.` },
+        { status: 400 },
+      )
+    }
+    if (!/^[a-z0-9_]+$/.test(username)) {
+      return NextResponse.json(
+        { error: "Username can only contain lowercase letters, numbers and underscores." },
+        { status: 400 },
+      )
+    }
+    if (bio.length > MAX_BIO_LENGTH) {
+      return NextResponse.json(
+        { error: `Bio cannot exceed ${MAX_BIO_LENGTH} characters.` },
         { status: 400 },
       )
     }
 
-    const normalizedUsername = nextUsername.toLowerCase().replace(/\s+/g, "-")
-
-    if (normalizedUsername) {
-      const existing = await prisma.user.findUnique({ where: { username: normalizedUsername } })
-      if (existing && existing.id !== session.user.id) {
-        return NextResponse.json({ error: "Username is already taken" }, { status: 400 })
+    if (image) {
+      try {
+        const imageUrl = new URL(image)
+        if (!["http:", "https:"].includes(imageUrl.protocol)) {
+          throw new Error("Invalid protocol")
+        }
+      } catch {
+        return NextResponse.json(
+          { error: "Profile image must be a valid URL." },
+          { status: 400 },
+        )
       }
     }
 
-    const user = await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        username: normalizedUsername || null,
-        bio: nextBio || null,
+    const existingUsername = await prisma.user.findFirst({
+      where: {
+        username,
+        NOT: { id: session.user.id },
       },
-      include: { followers: { select: { followerId: true } }, following: { select: { followingId: true } } },
+      select: { id: true },
     })
 
-    return NextResponse.json({
-      id: user.id,
-      name: user.name,
-      username: user.username,
-      handle: getProfileHandle(user.username ?? user.name ?? "user"),
-      bio: user.bio,
-      email: user.email,
-      image: user.image,
-      followersCount: user.followers.length,
-      followingCount: user.following.length,
+    if (existingUsername) {
+      return NextResponse.json(
+        { error: "That username is already taken." },
+        { status: 409 },
+      )
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: session.user.id },
+      data: {
+        name,
+        username,
+        bio: bio || null,
+        image: image || null,
+      },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        bio: true,
+        image: true,
+        email: true,
+        followers: { select: { followerId: true } },
+        following: { select: { followingId: true } },
+      },
     })
-  } catch {
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
+
+    return NextResponse.json(formatProfile(updatedUser))
+  } catch (error) {
+    console.error("UPDATE_PROFILE_ERROR", error)
+    return NextResponse.json({ error: "Failed to update profile." }, { status: 500 })
   }
 }

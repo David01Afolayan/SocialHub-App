@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import BackButton from "@/components/back-button"
+import Link from "next/link"
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null)
@@ -48,7 +49,12 @@ export default function ProfilePage() {
           <div className="p-6 md:p-8">
             <div className="mb-6 flex items-center justify-between">
               <BackButton />
-              <div className="status-pill">Public profile</div>
+              <div className="flex items-center gap-3">
+                <div className="status-pill">Public profile</div>
+                <Link href="/profile/settings" className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Edit Profile
+                </Link>
+              </div>
             </div>
 
             <div className="flex flex-col gap-5 md:flex-row md:items-end">
