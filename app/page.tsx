@@ -2,6 +2,7 @@
 
 import { useSession, signIn } from "next-auth/react"
 import { useEffect, useState } from "react"
+import Link from "next/link"
 
 export default function Home() {
   const { data: session } = useSession()
@@ -266,7 +267,9 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-3">
               <div className="status-pill">Active</div>
-              <button className="ghost-action rounded-xl px-4 py-2.5 text-sm font-semibold">View insights</button>
+              <Link href="/analytics" className="ghost-action rounded-xl px-4 py-2.5 text-sm font-semibold">
+                View insights
+              </Link>
             </div>
           </div>
         </div>

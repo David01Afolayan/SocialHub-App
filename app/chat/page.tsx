@@ -44,12 +44,38 @@ export default function ChatPage() {
   const [mode, setMode] = useState<ChatMode>("private")
   const [draft, setDraft] = useState("")
   const [sentMessages, setSentMessages] = useState<Message[]>([])
+  const [selectedConversation, setSelectedConversation] = useState(0)
+  const [customConversations, setCustomConversations] = useState<Record<ChatMode, typeof conversations.private>>({
+    private: [],
+    public: [],
+  })
 
   if (status === "loading") return <main className="p-8">Loading chat...</main>
   if (!session) return <main className="p-8">Sign in to access chat.</main>
 
+  const conversationList = [...conversations[mode], ...customConversations[mode]]
   const messages = mode === "private" ? privateMessages : publicMessages
-  const activeConversation = conversations[mode][0]
+  const activeConversation = conversationList[selectedConversation] ?? conversationList[0]
+
+  const handleStartConversation = () => {
+    const name = window.prompt(`Name this ${mode} conversation`)
+    const trimmedName = name?.trim()
+    if (!trimmedName) return
+
+    setCustomConversations((current) => ({
+      ...current,
+      [mode]: [
+        ...current[mode],
+        {
+          name: trimmedName,
+          detail: mode === "private" ? "New direct message" : "New public space",
+          initials: trimmedName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase(),
+          status: "New",
+        },
+      ],
+    }))
+    setSelectedConversation(conversationList.length)
+  }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -82,6 +108,7 @@ export default function ChatPage() {
                 aria-selected={mode === chatMode}
                 onClick={() => {
                   setMode(chatMode)
+                  setSelectedConversation(0)
                   setSentMessages([])
                 }}
                 className={`rounded-lg px-4 py-2 text-sm font-semibold capitalize transition ${mode === chatMode ? "bg-slate-950 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
@@ -97,20 +124,20 @@ export default function ChatPage() {
             <div className="mb-4 flex items-center justify-between px-2">
               <div>
                 <h2 className="font-semibold text-slate-950">{mode === "private" ? "Direct messages" : "Public spaces"}</h2>
-                <p className="mt-1 text-xs text-slate-500">{conversations[mode].length} conversations</p>
+                <p className="mt-1 text-xs text-slate-500">{conversationList.length} conversations</p>
               </div>
-              <button type="button" aria-label="Start a new conversation" className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg text-slate-500 hover:border-sky-300 hover:text-sky-600">+</button>
+              <button type="button" aria-label="Start a new conversation" onClick={handleStartConversation} className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg text-slate-500 hover:border-sky-300 hover:text-sky-600">+</button>
             </div>
 
             <div className="space-y-1">
-              {conversations[mode].map((conversation, index) => (
-                <button key={conversation.name} type="button" className={`flex w-full items-center gap-3 rounded-xl p-3 text-left transition ${index === 0 ? "bg-white shadow-sm ring-1 ring-slate-200" : "hover:bg-white/80"}`}>
-                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${index === 0 ? "bg-sky-100 text-sky-700" : "bg-slate-200 text-slate-600"}`}>{conversation.initials}</span>
+              {conversationList.map((conversation, index) => (
+                <button key={`${conversation.name}-${index}`} type="button" onClick={() => { setSelectedConversation(index); setSentMessages([]) }} className={`flex w-full items-center gap-3 rounded-xl p-3 text-left transition ${index === selectedConversation ? "bg-white shadow-sm ring-1 ring-slate-200" : "hover:bg-white/80"}`}>
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${index === selectedConversation ? "bg-sky-100 text-sky-700" : "bg-slate-200 text-slate-600"}`}>{conversation.initials}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-slate-800">{conversation.name}</span>
                     <span className="mt-0.5 block truncate text-xs text-slate-500">{conversation.detail}</span>
                   </span>
-                  <span className={`text-[10px] font-semibold ${index === 0 ? "text-emerald-600" : "text-slate-400"}`}>{conversation.status}</span>
+                  <span className={`text-[10px] font-semibold ${index === selectedConversation ? "text-emerald-600" : "text-slate-400"}`}>{conversation.status}</span>
                 </button>
               ))}
             </div>
