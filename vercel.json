@@ -1,3 +1,3 @@
 {
-  "buildCommand": "prisma generate && prisma db execute --file prisma/production-schema-sync.sql && next build"
+  "buildCommand": "prisma generate && prisma db push && next build"
 }
