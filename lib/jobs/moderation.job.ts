@@ -1,5 +1,6 @@
 import { moderationQueue } from "@/lib/queues/moderation.queue"
-import { moderateContent } from "@/lib/services/moderation.service"
+import { calculateModerationRisk } from "@/lib/moderation/risk"
+import { prisma } from "@/lib/prisma"
 
 type ModerationJob = {
   targetType: "POST"
@@ -19,10 +20,26 @@ function hasUsableRedisUrl() {
   }
 }
 
+async function moderateInline(data: ModerationJob) {
+  const result = calculateModerationRisk(data.content)
+  await prisma.post.update({
+    where: { id: data.targetId },
+    data: {
+      moderationStatus:
+        result.decision === "ALLOW"
+          ? "APPROVED"
+          : result.decision === "BLOCK"
+            ? "REJECTED"
+            : "PENDING_REVIEW",
+    },
+  })
+  return result
+}
+
 export async function queueModeration(data: ModerationJob) {
   if (!hasUsableRedisUrl()) {
     console.warn("MODERATION_QUEUE_UNAVAILABLE", "A reachable REDIS_URL is not configured; moderating inline.")
-    return moderateContent(data)
+    return moderateInline(data)
   }
 
   try {
@@ -31,6 +48,6 @@ export async function queueModeration(data: ModerationJob) {
     })
   } catch (error) {
     console.error("MODERATION_QUEUE_ERROR", error)
-    return moderateContent(data)
+    return moderateInline(data)
   }
 }
