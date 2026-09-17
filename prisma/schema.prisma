@@ -53,6 +53,7 @@ model User {
   receivedMessages        ChatMessage[]        @relation("ReceivedMessages")
   conversationMemberships ConversationMember[]
   messageReactions        MessageReaction[]
+  apiSessions             ApiSession[]
 
   @@index([username])
   @@index([createdAt])
@@ -81,6 +82,20 @@ model Account {
 
   @@unique([provider, providerAccountId])
   @@index([userId])
+}
+
+model ApiSession {
+  id           String   @id @default(cuid())
+  userId       String
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // =========================
