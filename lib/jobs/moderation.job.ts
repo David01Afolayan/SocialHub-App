@@ -1,4 +1,3 @@
-import { moderationQueue } from "@/lib/queues/moderation.queue"
 import { calculateModerationRisk } from "@/lib/moderation/risk"
 import { prisma } from "@/lib/prisma"
 
@@ -43,6 +42,7 @@ export async function queueModeration(data: ModerationJob) {
   }
 
   try {
+    const { moderationQueue } = await import("@/lib/queues/moderation.queue")
     return await moderationQueue.add("moderate-content", data, {
       jobId: `moderation:${data.targetType}:${data.targetId}`,
     })
