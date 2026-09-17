@@ -7,9 +7,21 @@ type ModerationJob = {
   content: string
 }
 
+function hasUsableRedisUrl() {
+  const value = process.env.REDIS_URL?.trim()
+  if (!value) return false
+
+  try {
+    const hostname = new URL(value).hostname
+    return !["localhost", "127.0.0.1", "::1"].includes(hostname)
+  } catch {
+    return false
+  }
+}
+
 export async function queueModeration(data: ModerationJob) {
-  if (!process.env.REDIS_URL) {
-    console.warn("MODERATION_QUEUE_UNAVAILABLE", "REDIS_URL is not configured; moderating inline.")
+  if (!hasUsableRedisUrl()) {
+    console.warn("MODERATION_QUEUE_UNAVAILABLE", "A reachable REDIS_URL is not configured; moderating inline.")
     return moderateContent(data)
   }
 
