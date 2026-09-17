@@ -54,6 +54,10 @@ model User {
   conversationMemberships ConversationMember[]
   messageReactions        MessageReaction[]
   apiSessions             ApiSession[]
+  uploadedMedia           Media[]
+  analyticsEvents         AnalyticsEvent[]
+  blocks                  UserBlock[] @relation("UserBlocks")
+  blockedBy                UserBlock[] @relation("BlockedByUsers")
 
   @@index([username])
   @@index([createdAt])
@@ -440,6 +444,7 @@ model ChatMessage {
   replyTo      ChatMessage?      @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies      ChatMessage[]     @relation("MessageReplies")
   reactions    MessageReaction[]
+  media        Media?            @relation(fields: [mediaId], references: [id], onDelete: SetNull)
 
   read   Boolean   @default(false)
   readAt DateTime?
@@ -465,6 +470,70 @@ model MessageReaction {
   @@unique([messageId, userId, type])
   @@index([messageId])
   @@index([userId])
+}
+
+model Media {
+  id           String   @id @default(cuid())
+  url          String
+  key          String?
+  fileName     String
+  mimeType     String
+  size         Int
+  width        Int?
+  height       Int?
+  duration     Int?
+  createdAt    DateTime @default(now())
+  uploadedById String
+
+  uploadedBy User          @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  messages   ChatMessage[]
+
+  @@index([uploadedById])
+  @@index([createdAt])
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  type      String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([entityId])
+}
+
+model AnalyticsDaily {
+  id        String   @id @default(cuid())
+  date      DateTime @unique
+  views     Int      @default(0)
+  posts     Int      @default(0)
+  likes     Int      @default(0)
+  comments  Int      @default(0)
+  messages  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+}
+
+model UserBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("UserBlocks", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlockedByUsers", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
 }
 
 model Conversation {

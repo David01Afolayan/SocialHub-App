@@ -42,6 +42,24 @@ export async function sendMessage(input: {
     throw new Error("MESSAGE_TOO_LONG")
   }
 
+  let messageType = input.type ?? "TEXT"
+  if (input.mediaId) {
+    const media = await prisma.media.findUnique({
+      where: { id: input.mediaId },
+      select: { mimeType: true, uploadedById: true },
+    })
+    if (!media || media.uploadedById !== input.senderId) {
+      throw new Error("MEDIA_FORBIDDEN")
+    }
+    messageType = media.mimeType.startsWith("image/")
+      ? "IMAGE"
+      : media.mimeType.startsWith("video/")
+        ? "VIDEO"
+        : media.mimeType.startsWith("audio/")
+          ? "AUDIO"
+          : "DOCUMENT"
+  }
+
   const receiver = conversation.members.find(
     (member) => member.userId !== input.senderId
   )
@@ -55,7 +73,7 @@ export async function sendMessage(input: {
     senderId: input.senderId,
     receiverId: receiver.userId,
     content,
-    type: input.type,
+    type: messageType,
     replyToId: input.replyToId,
     mediaId: input.mediaId,
   })

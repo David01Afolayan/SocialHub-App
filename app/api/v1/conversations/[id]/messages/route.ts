@@ -1,4 +1,5 @@
-import { auth } from "@/auth"
+import { NextRequest } from "next/server"
+import { requireApiUser } from "@/lib/api-auth"
 import { failure, success } from "@/lib/api/response"
 import {
   getConversationMessages,
@@ -8,20 +9,15 @@ import {
 type RouteContext = { params: Promise<{ id: string }> }
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: RouteContext
 ) {
   try {
-    const session = await auth()
-    const userId = session?.user?.id
-
-    if (!userId) {
-      return failure("Authentication required.", 401, "UNAUTHORIZED")
-    }
+    const user = await requireApiUser(request)
 
     const { id } = await params
     const cursor = new URL(request.url).searchParams.get("cursor") ?? undefined
-    const result = await getConversationMessages(id, userId, cursor)
+    const result = await getConversationMessages(id, user.id, cursor)
 
     return success(result)
   } catch (error) {
@@ -39,16 +35,11 @@ export async function GET(
 }
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: RouteContext
 ) {
   try {
-    const session = await auth()
-    const senderId = session?.user?.id
-
-    if (!senderId) {
-      return failure("Authentication required.", 401, "UNAUTHORIZED")
-    }
+    const user = await requireApiUser(request)
 
     const { id } = await params
     const body = await request.json()
@@ -59,7 +50,7 @@ export async function POST(
 
     const message = await sendMessage({
       conversationId: id,
-      senderId,
+      senderId: user.id,
       content: typeof body.content === "string" ? body.content : "",
       type: typeof body.type === "string" ? body.type : "TEXT",
       replyToId: typeof body.replyToId === "string" ? body.replyToId : null,
@@ -82,6 +73,14 @@ export async function POST(
 
     if (error instanceof Error && error.message === "MESSAGE_TOO_LONG") {
       return failure("Message cannot exceed 2000 characters.", 400, "MESSAGE_TOO_LONG")
+    }
+
+    if (error instanceof Error && error.message === "MEDIA_FORBIDDEN") {
+      return failure("Media is not available to this user.", 403, "MEDIA_FORBIDDEN")
+    }
+
+    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+      return failure("Authentication required.", 401, "UNAUTHORIZED")
     }
 
     console.error("SEND_MESSAGE_ERROR", error)
