@@ -53,14 +53,17 @@ export async function POST(
     const { id } = await params
     const body = await request.json()
 
-    if (typeof body?.content !== "string") {
-      return failure("Message content is required.", 400, "CONTENT_REQUIRED")
+    if (typeof body?.content !== "string" && !body?.mediaId) {
+      return failure("Message content or media is required.", 400, "CONTENT_REQUIRED")
     }
 
     const message = await sendMessage({
       conversationId: id,
       senderId,
-      content: body.content,
+      content: typeof body.content === "string" ? body.content : "",
+      type: typeof body.type === "string" ? body.type : "TEXT",
+      replyToId: typeof body.replyToId === "string" ? body.replyToId : null,
+      mediaId: typeof body.mediaId === "string" ? body.mediaId : null,
     })
 
     return success(message, 201)

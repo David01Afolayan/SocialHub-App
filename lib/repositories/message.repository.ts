@@ -11,6 +11,14 @@ export async function findMessagesByConversationId(
       sender: {
         select: { id: true, name: true, username: true, image: true },
       },
+      replyTo: {
+        select: {
+          id: true,
+          content: true,
+          sender: { select: { id: true, name: true, username: true } },
+        },
+      },
+      reactions: true,
     },
     orderBy: { createdAt: "desc" },
     take: Math.min(Math.max(limit, 1), 100),
@@ -23,6 +31,27 @@ export async function createMessageRecord(data: {
   senderId: string
   receiverId: string
   content: string
+  type?: string
+  replyToId?: string | null
+  mediaId?: string | null
 }) {
-  return prisma.chatMessage.create({ data })
+  return prisma.chatMessage.create({
+    data: {
+      ...data,
+      type: data.type ?? "TEXT",
+      replyToId: data.replyToId ?? null,
+      mediaId: data.mediaId ?? null,
+    },
+    include: {
+      sender: { select: { id: true, name: true, username: true, image: true } },
+      replyTo: {
+        select: {
+          id: true,
+          content: true,
+          sender: { select: { id: true, name: true, username: true } },
+        },
+      },
+      reactions: true,
+    },
+  })
 }

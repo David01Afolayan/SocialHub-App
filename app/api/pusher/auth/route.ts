@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { getPusher } from "@/lib/pusher"
+import { requireConversationMember } from "@/lib/services/conversation-auth.service"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
@@ -12,13 +13,18 @@ export async function POST(request: Request) {
     const body = await request.formData()
     const socketId = body.get("socket_id")
     const channelName = body.get("channel_name")
-    const expectedChannel = `private-user-${session.user.id}`
 
     if (typeof socketId !== "string" || typeof channelName !== "string") {
       return NextResponse.json({ error: "Invalid request." }, { status: 400 })
     }
-    if (channelName !== expectedChannel) {
-      return NextResponse.json({ error: "Forbidden." }, { status: 403 })
+    if (channelName !== `private-user-${session.user.id}`) {
+      const match = channelName.match(/^private-conversation-(.+)$/)
+      if (!match) return NextResponse.json({ error: "Forbidden." }, { status: 403 })
+      try {
+        await requireConversationMember(match[1], session.user.id)
+      } catch {
+        return NextResponse.json({ error: "Forbidden." }, { status: 403 })
+      }
     }
 
     return NextResponse.json(getPusher().authorizeChannel(socketId, channelName))

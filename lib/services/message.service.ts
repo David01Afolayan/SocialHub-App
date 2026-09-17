@@ -4,6 +4,7 @@ import {
 } from "@/lib/repositories/message.repository"
 import { getConversation } from "@/lib/services/conversation.service"
 import { prisma } from "@/lib/prisma"
+import { notifyConversationMembers } from "@/lib/services/message-notification.service"
 
 export async function getConversationMessages(
   conversationId: string,
@@ -23,6 +24,9 @@ export async function sendMessage(input: {
   conversationId: string
   senderId: string
   content: string
+  type?: string
+  replyToId?: string | null
+  mediaId?: string | null
 }) {
   const conversation = await getConversation(
     input.conversationId,
@@ -30,7 +34,7 @@ export async function sendMessage(input: {
   )
   const content = input.content.trim()
 
-  if (!content) {
+  if (!content && !input.mediaId) {
     throw new Error("MESSAGE_EMPTY")
   }
 
@@ -46,12 +50,17 @@ export async function sendMessage(input: {
     throw new Error("CONVERSATION_REQUIRES_MULTIPLE_MEMBERS")
   }
 
-  return createMessageRecord({
+  const message = await createMessageRecord({
     conversationId: input.conversationId,
     senderId: input.senderId,
     receiverId: receiver.userId,
     content,
+    type: input.type,
+    replyToId: input.replyToId,
+    mediaId: input.mediaId,
   })
+  await notifyConversationMembers(input.conversationId, input.senderId, message.id)
+  return message
 }
 
 export async function markConversationRead(

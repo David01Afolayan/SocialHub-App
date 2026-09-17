@@ -47,10 +47,12 @@ model User {
   moderationAppeals      ModerationAppeal[]
   appealReviews          ModerationAppeal[]      @relation("AppealReviews")
   interests              UserInterest[]
+  postMentions           PostMention[]
 
   sentMessages            ChatMessage[]        @relation("SentMessages")
   receivedMessages        ChatMessage[]        @relation("ReceivedMessages")
   conversationMemberships ConversationMember[]
+  messageReactions        MessageReaction[]
 
   @@index([username])
   @@index([createdAt])
@@ -150,6 +152,7 @@ model Post {
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   comments   Comment[]
+  mentions   PostMention[]
   likes      Like[]
   bookmarks  Bookmark[]
   hashtags   PostHashtag[]
@@ -196,16 +199,20 @@ model Comment {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  userId String
-  postId String
+  userId   String
+  postId   String
+  parentId String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post    Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
 
   @@index([userId])
   @@index([postId])
   @@index([createdAt])
   @@index([moderationStatus])
+  @@index([parentId])
 }
 
 model UserInterest {
@@ -309,6 +316,17 @@ model PostHashtag {
   @@index([hashtagId])
 }
 
+model PostMention {
+  postId String
+  userId String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+}
+
 model ModerationResult {
   id           String    @id @default(cuid())
   targetType   String
@@ -391,6 +409,9 @@ model NotificationPreference {
 model ChatMessage {
   id        String   @id @default(cuid())
   content   String
+  type      String   @default("TEXT")
+  mediaId   String?
+  replyToId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -398,9 +419,12 @@ model ChatMessage {
   receiverId     String
   conversationId String?
 
-  sender       User          @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver     User          @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
-  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User              @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver     User              @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  conversation Conversation?     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  replyTo      ChatMessage?      @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      ChatMessage[]     @relation("MessageReplies")
+  reactions    MessageReaction[]
 
   read   Boolean   @default(false)
   readAt DateTime?
@@ -410,6 +434,22 @@ model ChatMessage {
   @@index([createdAt])
   @@index([senderId, receiverId])
   @@index([conversationId, createdAt])
+  @@index([replyToId])
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  type      String
+  createdAt DateTime @default(now())
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, type])
+  @@index([messageId])
+  @@index([userId])
 }
 
 model Conversation {

@@ -2,18 +2,23 @@ import { auth } from "@/auth"
 import { failure, success } from "@/lib/api/response"
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/services/notification.service"
+import { createCommentSchema } from "@/lib/validations/comment"
+import { createComment, getComments } from "@/lib/repositories/comment.repository"
 
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params
-  const comments = await prisma.comment.findMany({
-    where: { postId: id, moderationStatus: "APPROVED" },
-    orderBy: { createdAt: "asc" },
-    include: { user: { select: { id: true, name: true, username: true, image: true } } },
+  const post = await prisma.post.findUnique({
+    where: { id },
+    select: { published: true, visibility: true, moderationStatus: true },
   })
-  return success({ comments })
+  if (!post) return failure("Post not found.", 404, "NOT_FOUND")
+  if (!post.published || post.visibility !== "PUBLIC" || post.moderationStatus !== "APPROVED") {
+    return failure("This post is unavailable.", 403, "POST_UNAVAILABLE")
+  }
+  return success({ items: await getComments(id) })
 }
 
 export async function POST(
@@ -23,13 +28,25 @@ export async function POST(
   const session = await auth()
   if (!session?.user?.id) return failure("Unauthorized.", 401, "UNAUTHORIZED")
   const { id } = await context.params
-  const body = await request.json()
-  const content = typeof body.content === "string" ? body.content.trim() : ""
-  if (!content || content.length > 2000) return failure("Comment must be between 1 and 2000 characters.", 400, "INVALID_COMMENT")
+  const parsed = createCommentSchema.safeParse(await request.json())
+  if (!parsed.success) return failure(parsed.error.issues[0]?.message ?? "Invalid comment.", 400, "INVALID_COMMENT")
   const post = await prisma.post.findUnique({ where: { id }, select: { id: true, authorId: true, published: true, visibility: true, moderationStatus: true } })
   if (!post) return failure("Post not found.", 404, "NOT_FOUND")
   if (!post.published || post.visibility !== "PUBLIC" || post.moderationStatus !== "APPROVED") return failure("This post is unavailable.", 403, "POST_UNAVAILABLE")
-  const comment = await prisma.comment.create({ data: { content, postId: id, userId: session.user.id, moderationStatus: "APPROVED" } })
+  if (parsed.data.parentId) {
+    const parent = await prisma.comment.findUnique({
+      where: { id: parsed.data.parentId },
+      select: { id: true, postId: true },
+    })
+    if (!parent) return failure("Parent comment not found.", 404, "PARENT_NOT_FOUND")
+    if (parent.postId !== id) return failure("Comment does not belong to this post.", 400, "INVALID_PARENT")
+  }
+  const comment = await createComment({
+    content: parsed.data.content,
+    postId: id,
+    userId: session.user.id,
+    parentId: parsed.data.parentId,
+  })
   if (post.authorId !== session.user.id) {
     await createNotification({
       userId: post.authorId,

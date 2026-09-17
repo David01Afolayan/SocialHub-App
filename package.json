@@ -8,6 +8,14 @@
     "start": "next start",
     "seed": "prisma db seed",
     "test": "node --test tests/profile-follow.test.js tests/notifications.test.js tests/media.test.js",
+    "test:run": "npm test",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:format": "prisma format",
+    "db:validate": "prisma validate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
     "worker": "tsx workers/index.ts"
   },
   "dependencies": {
