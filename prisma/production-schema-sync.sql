@@ -5,6 +5,11 @@ ALTER TABLE "ChatMessage"
 
 UPDATE "ChatMessage"
 SET
-  "senderId" = COALESCE("senderId", "authorId"),
-  "receiverId" = COALESCE("receiverId", "authorId"),
+  "senderId" = COALESCE("senderId", (SELECT "id" FROM "User" ORDER BY "createdAt" LIMIT 1)),
+  "receiverId" = COALESCE("receiverId", (SELECT "id" FROM "User" ORDER BY "createdAt" LIMIT 1)),
   "updatedAt" = COALESCE("updatedAt", "createdAt");
+
+ALTER TABLE "ChatMessage"
+  ALTER COLUMN "senderId" SET NOT NULL,
+  ALTER COLUMN "receiverId" SET NOT NULL,
+  ALTER COLUMN "updatedAt" SET NOT NULL;
