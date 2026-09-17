@@ -18,6 +18,18 @@ ALTER TABLE "ChatMessage"
   ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   ADD COLUMN "readAt" TIMESTAMP(3);
 
+-- The original ChatMessage migration used authorId. Preserve that history
+-- while introducing the legacy direct-message sender fields required by the
+-- conversation model.
+ALTER TABLE "ChatMessage"
+  ADD COLUMN "senderId" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "receiverId" TEXT NOT NULL DEFAULT '';
+
+UPDATE "ChatMessage"
+SET "senderId" = "authorId",
+    "receiverId" = "authorId"
+WHERE "senderId" = '' OR "receiverId" = '';
+
 CREATE UNIQUE INDEX "ConversationMember_conversationId_userId_key"
   ON "ConversationMember"("conversationId", "userId");
 CREATE INDEX "Conversation_updatedAt_idx" ON "Conversation"("updatedAt");

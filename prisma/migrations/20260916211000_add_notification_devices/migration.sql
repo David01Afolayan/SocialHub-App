@@ -1,6 +1,19 @@
+-- Notification existed in the live database before this migration was
+-- captured. Create the historical baseline when replaying into a shadow DB.
+CREATE TABLE IF NOT EXISTS "Notification" (
+  "id" TEXT NOT NULL,
+  "type" TEXT NOT NULL,
+  "message" TEXT NOT NULL,
+  "read" BOOLEAN NOT NULL DEFAULT false,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "userId" TEXT NOT NULL,
+  "postId" TEXT,
+  CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
+);
+
 ALTER TABLE "Notification"
-  ADD COLUMN "title" TEXT NOT NULL DEFAULT '',
-  ADD COLUMN "actorId" TEXT;
+  ADD COLUMN IF NOT EXISTS "title" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS "actorId" TEXT;
 
 CREATE TABLE "UserDevice" (
   "id" TEXT NOT NULL,
